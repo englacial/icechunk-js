@@ -403,15 +403,21 @@ export function findChunk(
   const nodeIdHex = nodeIdToHex(nodeId);
   const nodeChunks = manifest.chunks.get(nodeIdHex);
 
-  console.log(`[findChunk] Looking for nodeId=${nodeIdHex}, coords=${chunkCoords.join("/")}`);
-  console.log(`[findChunk] Available nodes in manifest: ${Array.from(manifest.chunks.keys()).join(", ")}`);
+  console.log(
+    `[findChunk] Looking for nodeId=${nodeIdHex}, coords=${chunkCoords.join("/")}`,
+  );
+  console.log(
+    `[findChunk] Available nodes in manifest: ${Array.from(manifest.chunks.keys()).join(", ")}`,
+  );
 
   if (!nodeChunks) {
     console.log(`[findChunk] No chunks found for this node ID`);
     return undefined;
   }
 
-  console.log(`[findChunk] Node has ${nodeChunks.size} chunks, keys: ${Array.from(nodeChunks.keys()).slice(0, 5).join(", ")}...`);
+  console.log(
+    `[findChunk] Node has ${nodeChunks.size} chunks, keys: ${Array.from(nodeChunks.keys()).slice(0, 5).join(", ")}...`,
+  );
 
   const keyStr = chunkCoords.join("/");
   return nodeChunks.get(keyStr);

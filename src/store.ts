@@ -235,12 +235,16 @@ export class IcechunkStore implements AsyncReadable {
     }
 
     const { manifests } = node.nodeData;
-    console.log(`[icechunk] getChunk: ${arrayPath} coords=[${coords}] manifests=${manifests.length}`);
+    console.log(
+      `[icechunk] getChunk: ${arrayPath} coords=[${coords}] manifests=${manifests.length}`,
+    );
 
     // Find the manifest containing this chunk
     const manifestRef = this.findManifestForChunk(manifests, coords);
     if (!manifestRef) {
-      console.log(`[icechunk] getChunk: no manifest found for coords [${coords}]`);
+      console.log(
+        `[icechunk] getChunk: no manifest found for coords [${coords}]`,
+      );
       return undefined;
     }
 
@@ -250,7 +254,9 @@ export class IcechunkStore implements AsyncReadable {
     // Find chunk in manifest
     const chunkPayload = findChunk(manifest, node.id, coords);
     if (!chunkPayload) {
-      console.log(`[icechunk] getChunk: chunk not found in manifest for coords [${coords}]`);
+      console.log(
+        `[icechunk] getChunk: chunk not found in manifest for coords [${coords}]`,
+      );
       return undefined;
     }
 

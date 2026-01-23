@@ -134,7 +134,10 @@ export function decodeEnvelope(data: Uint8Array): {
 export function readFbString(bb: flatbuffers.ByteBuffer, offset: number): string {
   const strOffset = bb.__offset(offset, bb.position());
   if (strOffset === 0) return "";
-  return bb.__string(bb.position() + strOffset) || "";
+  const result = bb.__string(bb.position() + strOffset);
+  if (result === null || result === undefined) return "";
+  if (typeof result === "string") return result;
+  return new TextDecoder().decode(result);
 }
 
 /**

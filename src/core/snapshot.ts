@@ -80,7 +80,11 @@ function readObjectId8(bb: flatbuffers.ByteBuffer, offset: number): Uint8Array {
 function readString(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): string {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return "";
-  return bb.__string(tableOffset + o) || "";
+  const result = bb.__string(tableOffset + o);
+  if (result === null || result === undefined) return "";
+  if (typeof result === "string") return result;
+  // Handle Uint8Array case - decode as UTF-8
+  return new TextDecoder().decode(result);
 }
 
 /**

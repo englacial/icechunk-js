@@ -15,7 +15,8 @@ const MANIFEST_ARRAYS_OFFSET = 6;
 
 // ArrayManifest field offsets
 const ARRAY_MANIFEST_NODE_ID_OFFSET = 4;
-const ARRAY_MANIFEST_CHUNKS_OFFSET = 6;
+const ARRAY_MANIFEST_CHUNKS_OFFSET = 6; // ChunkIndices - just coords
+const ARRAY_MANIFEST_CHUNK_REFS_OFFSET = 8; // ChunkRef - actual references (parallel array)
 
 // ChunkRef is a table with offset/length and payload type
 const CHUNK_REF_OFFSET_FIELD = 4;
@@ -74,10 +75,20 @@ function readVectorLength(
   bb: flatbuffers.ByteBuffer,
   tableOffset: number,
   fieldOffset: number,
+  debug?: string,
 ): number {
   const o = bb.__offset(tableOffset, fieldOffset);
+  if (debug) {
+    console.log(
+      `[readVectorLength:${debug}] tableOffset=${tableOffset}, fieldOffset=${fieldOffset}, o=${o}`,
+    );
+  }
   if (o === 0) return 0;
-  return bb.__vector_len(tableOffset + o);
+  const len = bb.__vector_len(tableOffset + o);
+  if (debug) {
+    console.log(`[readVectorLength:${debug}] len=${len}`);
+  }
+  return len;
 }
 
 /**
@@ -193,7 +204,12 @@ export function decodeManifest(data: Uint8Array): Manifest {
 
   // Read arrays (vector of ArrayManifest)
   const chunks = new Map<string, Map<string, ChunkPayload>>();
-  const arraysLen = readVectorLength(bb, tableOffset, MANIFEST_ARRAYS_OFFSET);
+  const arraysLen = readVectorLength(
+    bb,
+    tableOffset,
+    MANIFEST_ARRAYS_OFFSET,
+    "manifest.arrays",
+  );
 
   for (let i = 0; i < arraysLen; i++) {
     const elemOffset = getVectorElement(
@@ -204,6 +220,14 @@ export function decodeManifest(data: Uint8Array): Manifest {
     );
     const arrayTableOffset = bb.__indirect(elemOffset);
 
+    // Debug: dump vtable info for this ArrayManifest table
+    const vtableOffset = arrayTableOffset - bb.readInt32(arrayTableOffset);
+    const vtableSize = bb.readInt16(vtableOffset);
+    const tableSize = bb.readInt16(vtableOffset + 2);
+    console.log(
+      `[decodeManifest] Array ${i}: elemOffset=${elemOffset}, arrayTableOffset=${arrayTableOffset}, vtableOffset=${vtableOffset}, vtableSize=${vtableSize}, tableSize=${tableSize}`,
+    );
+
     // Read node ID (ObjectId8)
     const nodeIdFieldOffset = bb.__offset(
       arrayTableOffset,
@@ -212,17 +236,22 @@ export function decodeManifest(data: Uint8Array): Manifest {
     const nodeId = nodeIdFieldOffset
       ? readObjectId8(bb, arrayTableOffset + nodeIdFieldOffset)
       : new Uint8Array(8);
-    const nodeIdHex = Buffer.from(nodeId).toString("hex");
+    const nodeIdHex = uint8ArrayToHex(nodeId);
 
-    // Read chunks (vector of indexed ChunkRef)
+    // Read chunks - each entry contains coords AND the chunk reference
     const chunksLen = readVectorLength(
       bb,
       arrayTableOffset,
       ARRAY_MANIFEST_CHUNKS_OFFSET,
+      `array[${i}].chunks`,
+    );
+    console.log(
+      `[decodeManifest] Array ${i}: nodeId=${nodeIdHex}, chunksLen=${chunksLen}`,
     );
     const chunkMap = new Map<string, ChunkPayload>();
 
     for (let j = 0; j < chunksLen; j++) {
+      // Read from chunks array - each entry is an IndexedChunk with coords AND payload
       const chunkElemOffset = getVectorElement(
         bb,
         arrayTableOffset,
@@ -231,8 +260,24 @@ export function decodeManifest(data: Uint8Array): Manifest {
       );
       const chunkTableOffset = bb.__indirect(chunkElemOffset);
 
-      // IndexedChunkRef has: coords (vector of u32), chunk_ref
-      // First, read the coords
+      // Debug: dump vtable info for this chunk entry
+      if (j < 3) {
+        const chunkVtableOffset =
+          chunkTableOffset - bb.readInt32(chunkTableOffset);
+        const chunkVtableSize = bb.readInt16(chunkVtableOffset);
+        const chunkTableSize = bb.readInt16(chunkVtableOffset + 2);
+        // Check what fields are present
+        const numFields = (chunkVtableSize - 4) / 2;
+        const fieldOffsets: number[] = [];
+        for (let f = 0; f < numFields; f++) {
+          fieldOffsets.push(bb.readInt16(chunkVtableOffset + 4 + f * 2));
+        }
+        console.log(
+          `[decodeManifest] Chunk ${j} vtable: size=${chunkVtableSize}, tableSize=${chunkTableSize}, numFields=${numFields}, fieldOffsets=[${fieldOffsets}]`,
+        );
+      }
+
+      // Field 0: coords (vector of u32)
       const coordsLen = readVectorLength(bb, chunkTableOffset, 4);
       const coords: number[] = [];
 
@@ -245,16 +290,67 @@ export function decodeManifest(data: Uint8Array): Manifest {
         }
       }
 
-      // Read the chunk_ref (offset, length, payload)
-      const chunkRefOffset = bb.__offset(chunkTableOffset, 6);
-      if (chunkRefOffset) {
-        const refTableOffset = bb.__indirect(chunkTableOffset + chunkRefOffset);
-        const payload = parseChunkPayload(bb, refTableOffset);
+      // The chunk entry has fields embedded directly (not in nested table)
+      // Based on vtable: fieldOffsets=[4,0,16,24,0,8,0,12]
+      // Field 0 (offset 4): coords - working
+      // Field 2 (offset 8): present at table+16 - likely offset (u64)
+      // Field 3 (offset 10): present at table+24 - likely length (u64)
+      // Field 5 (offset 14): present at table+8 - likely location string offset
+      // Field 7 (offset 18): present at table+12 - maybe payload type or checksum
 
-        if (payload) {
-          const keyStr = coords.join("/");
-          chunkMap.set(keyStr, payload);
+      // Read location string (field 5, vtable offset 14)
+      const locationOffset = bb.__offset(chunkTableOffset, 14);
+      let location = "";
+      if (locationOffset) {
+        const strResult = bb.__string(chunkTableOffset + locationOffset);
+        if (strResult) {
+          location =
+            typeof strResult === "string"
+              ? strResult
+              : new TextDecoder().decode(strResult);
         }
+      }
+
+      // Read offset (field 2, vtable offset 8)
+      const offsetFieldOffset = bb.__offset(chunkTableOffset, 8);
+      const chunkOffset = offsetFieldOffset
+        ? Number(bb.readUint64(chunkTableOffset + offsetFieldOffset))
+        : 0;
+
+      // Read length (field 3, vtable offset 10)
+      const lengthFieldOffset = bb.__offset(chunkTableOffset, 10);
+      const chunkLength = lengthFieldOffset
+        ? Number(bb.readUint64(chunkTableOffset + lengthFieldOffset))
+        : 0;
+
+      if (j < 3) {
+        console.log(
+          `[decodeManifest] Chunk ${j}: coords=[${coords}], location="${location}", offset=${chunkOffset}, length=${chunkLength}`,
+        );
+      }
+
+      // Create payload based on what we found
+      let payload: ChunkPayload | null = null;
+      if (location && chunkLength > 0) {
+        // Virtual chunk reference
+        payload = {
+          type: "virtual",
+          location,
+          offset: chunkOffset,
+          length: chunkLength,
+        };
+      } else if (chunkLength > 0) {
+        // Might be inline or native - need more investigation
+        if (j < 3) {
+          console.log(
+            `[decodeManifest] Chunk ${j}: No location but has length - checking for inline/native`,
+          );
+        }
+      }
+
+      if (payload) {
+        const keyStr = coords.join("/");
+        chunkMap.set(keyStr, payload);
       }
     }
 
@@ -281,10 +377,19 @@ export function getChunkUrl(baseUrl: string, id: string): string {
 }
 
 /**
+ * Convert a Uint8Array to hex string (browser-compatible).
+ */
+function uint8ArrayToHex(arr: Uint8Array): string {
+  return Array.from(arr)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
  * Convert a node ID (Uint8Array) to hex string for map lookup.
  */
 export function nodeIdToHex(nodeId: Uint8Array): string {
-  return Buffer.from(nodeId).toString("hex");
+  return uint8ArrayToHex(nodeId);
 }
 
 /**
@@ -297,7 +402,16 @@ export function findChunk(
 ): ChunkPayload | undefined {
   const nodeIdHex = nodeIdToHex(nodeId);
   const nodeChunks = manifest.chunks.get(nodeIdHex);
-  if (!nodeChunks) return undefined;
+
+  console.log(`[findChunk] Looking for nodeId=${nodeIdHex}, coords=${chunkCoords.join("/")}`);
+  console.log(`[findChunk] Available nodes in manifest: ${Array.from(manifest.chunks.keys()).join(", ")}`);
+
+  if (!nodeChunks) {
+    console.log(`[findChunk] No chunks found for this node ID`);
+    return undefined;
+  }
+
+  console.log(`[findChunk] Node has ${nodeChunks.size} chunks, keys: ${Array.from(nodeChunks.keys()).slice(0, 5).join(", ")}...`);
 
   const keyStr = chunkCoords.join("/");
   return nodeChunks.get(keyStr);

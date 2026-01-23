@@ -28,11 +28,16 @@ export class HttpBackend {
    * Fetch a complete resource.
    */
   async fetch(url: string, options: FetchOptions = {}): Promise<Uint8Array> {
+    console.log(`[HttpBackend.fetch] Fetching URL: ${url}`);
     const response = await fetch(url, {
       method: "GET",
       headers: { ...this.baseHeaders, ...options.headers },
       signal: options.signal,
     });
+
+    console.log(
+      `[HttpBackend.fetch] Response: ${response.status} ${response.statusText} (${response.url})`,
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -41,6 +46,7 @@ export class HttpBackend {
     }
 
     const buffer = await response.arrayBuffer();
+    console.log(`[HttpBackend.fetch] Received ${buffer.byteLength} bytes`);
     return new Uint8Array(buffer);
   }
 

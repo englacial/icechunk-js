@@ -46,6 +46,15 @@ export interface IcechunkStoreOptions {
   };
   /** Abort signal for cancellation */
   signal?: AbortSignal;
+  /**
+   * Custom URL transformer for virtual chunk locations.
+   * Use this to route cloud storage URLs through a proxy in development.
+   * @example
+   * ```typescript
+   * virtualUrlTransformer: (url) => url.replace('gs://ismip6/', '/ismip6-proxy/')
+   * ```
+   */
+  virtualUrlTransformer?: (url: string) => string;
 }
 
 /**
@@ -84,6 +93,7 @@ export class IcechunkStore implements AsyncReadable {
   private readonly rootUrl: string;
   private readonly backend: HttpBackend;
   private readonly manifestCache: LRUCache<string, Manifest>;
+  private readonly virtualUrlTransformer?: (url: string) => string;
   private snapshot: Snapshot | null = null;
   private basePath: string = "";
 
@@ -91,6 +101,7 @@ export class IcechunkStore implements AsyncReadable {
     this.rootUrl = rootUrl.endsWith("/") ? rootUrl : rootUrl + "/";
     this.backend = new HttpBackend();
     this.manifestCache = new LRUCache(options.cache?.manifests ?? 100);
+    this.virtualUrlTransformer = options.virtualUrlTransformer;
   }
 
   /**
@@ -107,7 +118,10 @@ export class IcechunkStore implements AsyncReadable {
 
   private async initialize(options: IcechunkStoreOptions): Promise<void> {
     const snapshotId = await this.resolveSnapshotId(options);
+    console.log(`[IcechunkStore] Resolved snapshot ID: ${snapshotId}`);
+    console.log(`[IcechunkStore] Root URL: ${this.rootUrl}`);
     const snapshotUrl = getSnapshotUrl(this.rootUrl, snapshotId);
+    console.log(`[IcechunkStore] Snapshot URL: ${snapshotUrl}`);
     const snapshotData = await this.backend.fetch(snapshotUrl, {
       signal: options.signal,
     });
@@ -165,9 +179,10 @@ export class IcechunkStore implements AsyncReadable {
     resolved.basePath = this.basePath
       ? `${this.basePath}/${path}`.replace(/\/+/g, "/").replace(/^\/|\/$/g, "")
       : path.replace(/^\/|\/$/g, "");
-    // Share the manifest cache
+    // Share the manifest cache, backend, and URL transformer
     (resolved as any).manifestCache = this.manifestCache;
     (resolved as any).backend = this.backend;
+    (resolved as any).virtualUrlTransformer = this.virtualUrlTransformer;
     return resolved;
   }
 
@@ -215,14 +230,17 @@ export class IcechunkStore implements AsyncReadable {
   ): Promise<Uint8Array | undefined> {
     const node = findNode(this.snapshot!, arrayPath);
     if (!node || node.nodeData.type !== "array") {
+      console.log(`[icechunk] getChunk: node not found for ${arrayPath}`);
       return undefined;
     }
 
     const { manifests } = node.nodeData;
+    console.log(`[icechunk] getChunk: ${arrayPath} coords=[${coords}] manifests=${manifests.length}`);
 
     // Find the manifest containing this chunk
     const manifestRef = this.findManifestForChunk(manifests, coords);
     if (!manifestRef) {
+      console.log(`[icechunk] getChunk: no manifest found for coords [${coords}]`);
       return undefined;
     }
 
@@ -232,11 +250,16 @@ export class IcechunkStore implements AsyncReadable {
     // Find chunk in manifest
     const chunkPayload = findChunk(manifest, node.id, coords);
     if (!chunkPayload) {
+      console.log(`[icechunk] getChunk: chunk not found in manifest for coords [${coords}]`);
       return undefined;
     }
 
+    console.log(`[icechunk] getChunk: found chunk type=${chunkPayload.type}`);
+
     // Fetch chunk data
-    return this.fetchChunkData(chunkPayload);
+    const data = await this.fetchChunkData(chunkPayload);
+    console.log(`[icechunk] getChunk: fetched ${data.length} bytes`);
+    return data;
   }
 
   private findManifestForChunk(
@@ -282,8 +305,10 @@ export class IcechunkStore implements AsyncReadable {
       }
 
       case "virtual": {
-        // Translate cloud URLs to HTTPS
-        const url = translateUrl(payload.location);
+        // Apply custom transformer if provided, otherwise translate to HTTPS
+        const url = this.virtualUrlTransformer
+          ? this.virtualUrlTransformer(payload.location)
+          : translateUrl(payload.location);
         return this.backend.fetchRange(url, {
           offset: payload.offset,
           length: payload.length,

@@ -67,9 +67,25 @@ export function parseEnvelopeHeader(data: Uint8Array): EnvelopeHeader {
   }
 
   // Verify magic bytes
+  const actualMagic = data.slice(0, MAGIC.length);
+  console.log(
+    "[decode] Expected magic:",
+    Array.from(MAGIC)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(" "),
+  );
+  console.log(
+    "[decode] Actual magic:  ",
+    Array.from(actualMagic)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(" "),
+  );
+
   for (let i = 0; i < MAGIC.length; i++) {
     if (data[i] !== MAGIC[i]) {
-      throw new Error("Invalid icechunk magic bytes");
+      throw new Error(
+        `Invalid icechunk magic bytes at position ${i}: expected 0x${MAGIC[i].toString(16).padStart(2, "0")}, got 0x${data[i].toString(16).padStart(2, "0")}`,
+      );
     }
   }
 

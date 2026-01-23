@@ -25,13 +25,15 @@ export function decodeRef(obj: unknown): string {
   const keys = Object.keys(obj);
   if (keys.length !== 1 || keys[0] !== "snapshot") {
     throw new Error(
-      `Expected object with only a "snapshot" property, got: ${JSON.stringify(obj)}`
+      `Expected object with only a "snapshot" property, got: ${JSON.stringify(obj)}`,
     );
   }
 
   const snapshot = (obj as Record<string, unknown>).snapshot;
   if (typeof snapshot !== "string") {
-    throw new Error(`Expected snapshot to be a string, got: ${typeof snapshot}`);
+    throw new Error(
+      `Expected snapshot to be a string, got: ${typeof snapshot}`,
+    );
   }
 
   if (!isValidSnapshotId(snapshot)) {

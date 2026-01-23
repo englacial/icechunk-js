@@ -77,7 +77,11 @@ function readObjectId8(bb: flatbuffers.ByteBuffer, offset: number): Uint8Array {
 /**
  * Read a string at an offset from a table.
  */
-function readString(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): string {
+function readString(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): string {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return "";
   const result = bb.__string(tableOffset + o);
@@ -90,7 +94,11 @@ function readString(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset
 /**
  * Read a vector length at an offset from a table.
  */
-function readVectorLength(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): number {
+function readVectorLength(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): number {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return 0;
   return bb.__vector_len(tableOffset + o);
@@ -99,7 +107,12 @@ function readVectorLength(bb: flatbuffers.ByteBuffer, tableOffset: number, field
 /**
  * Get vector element offset.
  */
-function getVectorElement(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number, index: number): number {
+function getVectorElement(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+  index: number,
+): number {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return 0;
   return bb.__vector(tableOffset + o) + index * 4;
@@ -108,7 +121,11 @@ function getVectorElement(bb: flatbuffers.ByteBuffer, tableOffset: number, field
 /**
  * Read a byte vector.
  */
-function readByteVector(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): Uint8Array {
+function readByteVector(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): Uint8Array {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return new Uint8Array(0);
 
@@ -120,7 +137,10 @@ function readByteVector(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOf
 /**
  * Parse ArrayNodeData from FlatBuffers.
  */
-function parseArrayNodeData(bb: flatbuffers.ByteBuffer, offset: number): NodeData {
+function parseArrayNodeData(
+  bb: flatbuffers.ByteBuffer,
+  offset: number,
+): NodeData {
   // Read the table offset
   const tableOffset = bb.__indirect(offset);
 
@@ -144,11 +164,20 @@ function parseArrayNodeData(bb: flatbuffers.ByteBuffer, offset: number): NodeDat
   }
 
   // Read dimension names (optional)
-  const dimNamesLen = readVectorLength(bb, tableOffset, ARRAY_DIMENSION_NAMES_OFFSET);
+  const dimNamesLen = readVectorLength(
+    bb,
+    tableOffset,
+    ARRAY_DIMENSION_NAMES_OFFSET,
+  );
   const dimensionNames: string[] = [];
   if (dimNamesLen > 0) {
     for (let i = 0; i < dimNamesLen; i++) {
-      const elemOffset = getVectorElement(bb, tableOffset, ARRAY_DIMENSION_NAMES_OFFSET, i);
+      const elemOffset = getVectorElement(
+        bb,
+        tableOffset,
+        ARRAY_DIMENSION_NAMES_OFFSET,
+        i,
+      );
       const nameTableOffset = bb.__indirect(elemOffset);
       // DimensionName has a single string field
       const name = readString(bb, nameTableOffset, 4);
@@ -157,12 +186,21 @@ function parseArrayNodeData(bb: flatbuffers.ByteBuffer, offset: number): NodeDat
   }
 
   // Read manifests (vector of ManifestRef)
-  const manifestsLen = readVectorLength(bb, tableOffset, ARRAY_MANIFESTS_OFFSET);
+  const manifestsLen = readVectorLength(
+    bb,
+    tableOffset,
+    ARRAY_MANIFESTS_OFFSET,
+  );
   const manifests: ManifestRef[] = [];
 
   if (manifestsLen > 0) {
     for (let i = 0; i < manifestsLen; i++) {
-      const elemOffset = getVectorElement(bb, tableOffset, ARRAY_MANIFESTS_OFFSET, i);
+      const elemOffset = getVectorElement(
+        bb,
+        tableOffset,
+        ARRAY_MANIFESTS_OFFSET,
+        i,
+      );
       const refTableOffset = bb.__indirect(elemOffset);
 
       // ManifestRef id is a struct (ObjectId12)
@@ -170,11 +208,18 @@ function parseArrayNodeData(bb: flatbuffers.ByteBuffer, offset: number): NodeDat
       const id = idOffset ? readObjectId12(bb, refTableOffset + idOffset) : "";
 
       // Extents is a vector of ChunkIndexRange structs (each has start: u32, end: u32)
-      const extentsLen = readVectorLength(bb, refTableOffset, MANIFEST_REF_EXTENTS_OFFSET);
+      const extentsLen = readVectorLength(
+        bb,
+        refTableOffset,
+        MANIFEST_REF_EXTENTS_OFFSET,
+      );
       const extents: Array<[number, number]> = [];
 
       if (extentsLen > 0) {
-        const extentsVecOffset = bb.__offset(refTableOffset, MANIFEST_REF_EXTENTS_OFFSET);
+        const extentsVecOffset = bb.__offset(
+          refTableOffset,
+          MANIFEST_REF_EXTENTS_OFFSET,
+        );
         const extentsVec = bb.__vector(refTableOffset + extentsVecOffset);
 
         for (let j = 0; j < extentsLen; j++) {
@@ -209,12 +254,17 @@ function parseArrayNodeData(bb: flatbuffers.ByteBuffer, offset: number): NodeDat
 /**
  * Parse a NodeSnapshot from FlatBuffers.
  */
-function parseNodeSnapshot(bb: flatbuffers.ByteBuffer, offset: number): NodeSnapshot {
+function parseNodeSnapshot(
+  bb: flatbuffers.ByteBuffer,
+  offset: number,
+): NodeSnapshot {
   const tableOffset = bb.__indirect(offset);
 
   // Read node ID (ObjectId8 struct)
   const idFieldOffset = bb.__offset(tableOffset, NODE_ID_OFFSET);
-  const id = idFieldOffset ? readObjectId8(bb, tableOffset + idFieldOffset) : new Uint8Array(8);
+  const id = idFieldOffset
+    ? readObjectId8(bb, tableOffset + idFieldOffset)
+    : new Uint8Array(8);
 
   // Read path
   const path = readString(bb, tableOffset, NODE_PATH_OFFSET);
@@ -234,7 +284,9 @@ function parseNodeSnapshot(bb: flatbuffers.ByteBuffer, offset: number): NodeSnap
 
   // Read node_data_type and node_data
   const nodeDataTypeOffset = bb.__offset(tableOffset, NODE_DATA_TYPE_OFFSET);
-  const nodeDataType = nodeDataTypeOffset ? bb.readUint8(tableOffset + nodeDataTypeOffset) : NODE_DATA_NONE;
+  const nodeDataType = nodeDataTypeOffset
+    ? bb.readUint8(tableOffset + nodeDataTypeOffset)
+    : NODE_DATA_NONE;
 
   let nodeData: NodeData;
 
@@ -243,14 +295,25 @@ function parseNodeSnapshot(bb: flatbuffers.ByteBuffer, offset: number): NodeSnap
     if (nodeDataOffset) {
       nodeData = parseArrayNodeData(bb, tableOffset + nodeDataOffset);
       // Merge zarr metadata from user_data if available
-      if (userAttributes.zarr_format === 3 || userAttributes.zarr_format === 2) {
-        const arrayData = nodeData as { type: "array"; zarrMetadata: ZarrArrayMetadata };
-        arrayData.zarrMetadata.dataType = (userAttributes.data_type as string) || "";
+      if (
+        userAttributes.zarr_format === 3 ||
+        userAttributes.zarr_format === 2
+      ) {
+        const arrayData = nodeData as {
+          type: "array";
+          zarrMetadata: ZarrArrayMetadata;
+        };
+        arrayData.zarrMetadata.dataType =
+          (userAttributes.data_type as string) || "";
         arrayData.zarrMetadata.fillValue = userAttributes.fill_value;
-        arrayData.zarrMetadata.codecs = (userAttributes.codecs as unknown[]) || [];
+        arrayData.zarrMetadata.codecs =
+          (userAttributes.codecs as unknown[]) || [];
         if (userAttributes.chunk_key_encoding) {
-          const encoding = userAttributes.chunk_key_encoding as { name?: string };
-          arrayData.zarrMetadata.chunkKeyEncoding = encoding.name === "v2" ? "dot" : "slash";
+          const encoding = userAttributes.chunk_key_encoding as {
+            name?: string;
+          };
+          arrayData.zarrMetadata.chunkKeyEncoding =
+            encoding.name === "v2" ? "dot" : "slash";
         }
       }
     } else {
@@ -288,27 +351,44 @@ export function decodeSnapshot(data: Uint8Array): Snapshot {
 
   // Read snapshot ID (ObjectId12 struct)
   const idFieldOffset = bb.__offset(tableOffset, SNAPSHOT_ID_OFFSET);
-  const id = idFieldOffset ? readObjectId12(bb, tableOffset + idFieldOffset) : "";
+  const id = idFieldOffset
+    ? readObjectId12(bb, tableOffset + idFieldOffset)
+    : "";
 
   // Read parent ID (optional ObjectId12)
-  const parentIdFieldOffset = bb.__offset(tableOffset, SNAPSHOT_PARENT_ID_OFFSET);
-  const parentId = parentIdFieldOffset ? readObjectId12(bb, tableOffset + parentIdFieldOffset) : null;
+  const parentIdFieldOffset = bb.__offset(
+    tableOffset,
+    SNAPSHOT_PARENT_ID_OFFSET,
+  );
+  const parentId = parentIdFieldOffset
+    ? readObjectId12(bb, tableOffset + parentIdFieldOffset)
+    : null;
 
   // Read flushed_at (u64 timestamp)
   const flushedAtOffset = bb.__offset(tableOffset, SNAPSHOT_FLUSHED_AT_OFFSET);
-  const flushedAtValue = flushedAtOffset ? bb.readUint64(tableOffset + flushedAtOffset) : BigInt(0);
+  const flushedAtValue = flushedAtOffset
+    ? bb.readUint64(tableOffset + flushedAtOffset)
+    : BigInt(0);
   const flushedAt = new Date(Number(flushedAtValue)).toISOString();
 
   // Read message
   const message = readString(bb, tableOffset, SNAPSHOT_MESSAGE_OFFSET);
 
   // Read metadata (vector of MetadataItem)
-  const metadataLen = readVectorLength(bb, tableOffset, SNAPSHOT_METADATA_OFFSET);
+  const metadataLen = readVectorLength(
+    bb,
+    tableOffset,
+    SNAPSHOT_METADATA_OFFSET,
+  );
   const metadata: Record<string, string> = {};
   // TODO: Parse metadata items
 
   // Read manifest_files (vector of ManifestFileInfo structs)
-  const manifestFilesLen = readVectorLength(bb, tableOffset, SNAPSHOT_MANIFEST_FILES_OFFSET);
+  const manifestFilesLen = readVectorLength(
+    bb,
+    tableOffset,
+    SNAPSHOT_MANIFEST_FILES_OFFSET,
+  );
   const manifestFiles = new Map<string, { id: string }>();
 
   if (manifestFilesLen > 0) {
@@ -327,7 +407,12 @@ export function decodeSnapshot(data: Uint8Array): Snapshot {
   const nodes: NodeSnapshot[] = [];
 
   for (let i = 0; i < nodesLen; i++) {
-    const elemOffset = getVectorElement(bb, tableOffset, SNAPSHOT_NODES_OFFSET, i);
+    const elemOffset = getVectorElement(
+      bb,
+      tableOffset,
+      SNAPSHOT_NODES_OFFSET,
+      i,
+    );
     const node = parseNodeSnapshot(bb, elemOffset);
     nodes.push(node);
   }
@@ -349,7 +434,7 @@ export function decodeSnapshot(data: Uint8Array): Snapshot {
  */
 export function findNode(
   snapshot: Snapshot,
-  path: string
+  path: string,
 ): NodeSnapshot | undefined {
   const normalizedPath = normalizePath(path);
   const nodes = snapshot.nodes;

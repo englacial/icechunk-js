@@ -15,9 +15,18 @@ import * as flatbuffers from "flatbuffers";
 
 // Magic bytes for "ICE🧊CHUNK" - the ice cube emoji is 4 bytes in UTF-8
 const MAGIC = new Uint8Array([
-  0x49, 0x43, 0x45, // "ICE"
-  0xf0, 0x9f, 0xa7, 0x8a, // 🧊 (ice cube emoji)
-  0x43, 0x48, 0x55, 0x4e, 0x4b, // "CHUNK"
+  0x49,
+  0x43,
+  0x45, // "ICE"
+  0xf0,
+  0x9f,
+  0xa7,
+  0x8a, // 🧊 (ice cube emoji)
+  0x43,
+  0x48,
+  0x55,
+  0x4e,
+  0x4b, // "CHUNK"
 ]);
 
 const MAGIC_SIZE = 12;
@@ -53,7 +62,7 @@ export interface EnvelopeHeader {
 export function parseEnvelopeHeader(data: Uint8Array): EnvelopeHeader {
   if (data.length < HEADER_SIZE) {
     throw new Error(
-      `Data too short for icechunk header: ${data.length} < ${HEADER_SIZE}`
+      `Data too short for icechunk header: ${data.length} < ${HEADER_SIZE}`,
     );
   }
 
@@ -72,12 +81,14 @@ export function parseEnvelopeHeader(data: Uint8Array): EnvelopeHeader {
   const specVersion = data[MAGIC_SIZE + VERSION_STRING_SIZE];
   if (specVersion > LATEST_SPEC_VERSION) {
     throw new Error(
-      `Unsupported icechunk spec version: ${specVersion} > ${LATEST_SPEC_VERSION}`
+      `Unsupported icechunk spec version: ${specVersion} > ${LATEST_SPEC_VERSION}`,
     );
   }
 
   const fileType = data[MAGIC_SIZE + VERSION_STRING_SIZE + 1] as FileType;
-  const compression = data[MAGIC_SIZE + VERSION_STRING_SIZE + 2] as CompressionMethod;
+  const compression = data[
+    MAGIC_SIZE + VERSION_STRING_SIZE + 2
+  ] as CompressionMethod;
 
   return {
     versionString,
@@ -92,7 +103,7 @@ export function parseEnvelopeHeader(data: Uint8Array): EnvelopeHeader {
  */
 function decompress(
   data: Uint8Array,
-  compression: CompressionMethod
+  compression: CompressionMethod,
 ): Uint8Array {
   switch (compression) {
     case CompressionMethod.Uncompressed:
@@ -122,7 +133,9 @@ export function decodeEnvelope(data: Uint8Array): {
   const fileIdBytes = decompressed.slice(4, 8);
   const fileId = new TextDecoder().decode(fileIdBytes);
   if (fileId !== ICECHUNK_FILE_ID) {
-    throw new Error(`Invalid FlatBuffers file identifier: expected "${ICECHUNK_FILE_ID}", got "${fileId}"`);
+    throw new Error(
+      `Invalid FlatBuffers file identifier: expected "${ICECHUNK_FILE_ID}", got "${fileId}"`,
+    );
   }
 
   return { header, buffer: bb };
@@ -131,7 +144,10 @@ export function decodeEnvelope(data: Uint8Array): {
 /**
  * Read a string from a FlatBuffers buffer.
  */
-export function readFbString(bb: flatbuffers.ByteBuffer, offset: number): string {
+export function readFbString(
+  bb: flatbuffers.ByteBuffer,
+  offset: number,
+): string {
   const strOffset = bb.__offset(offset, bb.position());
   if (strOffset === 0) return "";
   const result = bb.__string(bb.position() + strOffset);
@@ -143,7 +159,10 @@ export function readFbString(bb: flatbuffers.ByteBuffer, offset: number): string
 /**
  * Read a byte vector from a FlatBuffers buffer.
  */
-export function readFbByteVector(bb: flatbuffers.ByteBuffer, offset: number): Uint8Array {
+export function readFbByteVector(
+  bb: flatbuffers.ByteBuffer,
+  offset: number,
+): Uint8Array {
   const vecOffset = bb.__offset(offset, bb.position());
   if (vecOffset === 0) return new Uint8Array(0);
 

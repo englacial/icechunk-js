@@ -98,7 +98,7 @@ export class IcechunkStore implements AsyncReadable {
    */
   static async open(
     rootUrl: string,
-    options: IcechunkStoreOptions = {}
+    options: IcechunkStoreOptions = {},
   ): Promise<IcechunkStore> {
     const store = new IcechunkStore(rootUrl, options);
     await store.initialize(options);
@@ -115,7 +115,7 @@ export class IcechunkStore implements AsyncReadable {
   }
 
   private async resolveSnapshotId(
-    options: IcechunkStoreOptions
+    options: IcechunkStoreOptions,
   ): Promise<string> {
     if (options.snapshot) {
       return options.snapshot;
@@ -211,7 +211,7 @@ export class IcechunkStore implements AsyncReadable {
 
   private async getChunk(
     arrayPath: string,
-    coords: number[]
+    coords: number[],
   ): Promise<Uint8Array | undefined> {
     const node = findNode(this.snapshot!, arrayPath);
     if (!node || node.nodeData.type !== "array") {
@@ -241,7 +241,7 @@ export class IcechunkStore implements AsyncReadable {
 
   private findManifestForChunk(
     manifests: ManifestRef[],
-    coords: number[]
+    coords: number[],
   ): ManifestRef | undefined {
     for (const ref of manifests) {
       if (isChunkInExtent(coords, ref.extents)) {

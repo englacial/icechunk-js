@@ -66,6 +66,6 @@ jobs:
         run: npm ci
 
       - name: Run integration tests
-        run: npm test -- --testPathPattern=integration
+        run: npm test -- integration
         env:
           ICECHUNK_TEST_URL: https://storage.googleapis.com/ismip6-icechunk/12-07-2025/

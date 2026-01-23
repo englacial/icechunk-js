@@ -35,7 +35,9 @@ export class HttpBackend {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText} for ${url}`);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText} for ${url}`,
+      );
     }
 
     const buffer = await response.arrayBuffer();
@@ -47,7 +49,7 @@ export class HttpBackend {
    */
   async fetchRange(
     url: string,
-    options: ByteRangeOptions
+    options: ByteRangeOptions,
   ): Promise<Uint8Array> {
     const { offset, length, signal, headers = {} } = options;
     const end = offset + length - 1;
@@ -64,7 +66,9 @@ export class HttpBackend {
 
     // Accept both 200 (full content) and 206 (partial content)
     if (!response.ok && response.status !== 206) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText} for ${url}`);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText} for ${url}`,
+      );
     }
 
     const buffer = await response.arrayBuffer();
@@ -86,7 +90,9 @@ export class HttpBackend {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText} for ${url}`);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText} for ${url}`,
+      );
     }
 
     return response.json() as Promise<T>;

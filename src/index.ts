@@ -38,7 +38,11 @@ export {
   isValidId,
 } from "./encoding/crockford-base32.js";
 
-export { translateUrl, translateGcsUrl, translateS3Url } from "./backend/http.js";
+export {
+  translateUrl,
+  translateGcsUrl,
+  translateS3Url,
+} from "./backend/http.js";
 
 // Low-level APIs for advanced usage
 export { decodeSnapshot, findNode, encodeZarrJson } from "./core/snapshot.js";

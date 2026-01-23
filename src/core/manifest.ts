@@ -54,7 +54,11 @@ function readObjectId8(bb: flatbuffers.ByteBuffer, offset: number): Uint8Array {
 /**
  * Read a string at an offset from a table.
  */
-function readString(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): string {
+function readString(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): string {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return "";
   const result = bb.__string(tableOffset + o);
@@ -66,7 +70,11 @@ function readString(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset
 /**
  * Read a vector length.
  */
-function readVectorLength(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): number {
+function readVectorLength(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): number {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return 0;
   return bb.__vector_len(tableOffset + o);
@@ -75,7 +83,12 @@ function readVectorLength(bb: flatbuffers.ByteBuffer, tableOffset: number, field
 /**
  * Get vector element offset.
  */
-function getVectorElement(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number, index: number): number {
+function getVectorElement(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+  index: number,
+): number {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return 0;
   return bb.__vector(tableOffset + o) + index * 4;
@@ -84,7 +97,11 @@ function getVectorElement(bb: flatbuffers.ByteBuffer, tableOffset: number, field
 /**
  * Read a byte vector.
  */
-function readByteVector(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOffset: number): Uint8Array {
+function readByteVector(
+  bb: flatbuffers.ByteBuffer,
+  tableOffset: number,
+  fieldOffset: number,
+): Uint8Array {
   const o = bb.__offset(tableOffset, fieldOffset);
   if (o === 0) return new Uint8Array(0);
 
@@ -98,9 +115,12 @@ function readByteVector(bb: flatbuffers.ByteBuffer, tableOffset: number, fieldOf
  */
 function parseChunkPayload(
   bb: flatbuffers.ByteBuffer,
-  tableOffset: number
+  tableOffset: number,
 ): ChunkPayload | null {
-  const payloadTypeOffset = bb.__offset(tableOffset, CHUNK_REF_PAYLOAD_TYPE_FIELD);
+  const payloadTypeOffset = bb.__offset(
+    tableOffset,
+    CHUNK_REF_PAYLOAD_TYPE_FIELD,
+  );
   if (payloadTypeOffset === 0) return null;
 
   const payloadType = bb.readUint8(tableOffset + payloadTypeOffset);
@@ -121,9 +141,13 @@ function parseChunkPayload(
       // VirtualPayload: location string, offset, length
       const location = readString(bb, payloadTableOffset, 4);
       const offsetFieldOffset = bb.__offset(payloadTableOffset, 6);
-      const offset = offsetFieldOffset ? Number(bb.readUint64(payloadTableOffset + offsetFieldOffset)) : 0;
+      const offset = offsetFieldOffset
+        ? Number(bb.readUint64(payloadTableOffset + offsetFieldOffset))
+        : 0;
       const lengthFieldOffset = bb.__offset(payloadTableOffset, 8);
-      const length = lengthFieldOffset ? Number(bb.readUint64(payloadTableOffset + lengthFieldOffset)) : 0;
+      const length = lengthFieldOffset
+        ? Number(bb.readUint64(payloadTableOffset + lengthFieldOffset))
+        : 0;
 
       return { type: "virtual", location, offset, length };
     }
@@ -131,11 +155,17 @@ function parseChunkPayload(
     case PAYLOAD_REF: {
       // RefPayload: chunk ID (ObjectId12)
       const idFieldOffset = bb.__offset(payloadTableOffset, 4);
-      const id = idFieldOffset ? readObjectId12(bb, payloadTableOffset + idFieldOffset) : "";
+      const id = idFieldOffset
+        ? readObjectId12(bb, payloadTableOffset + idFieldOffset)
+        : "";
       const offsetFieldOffset = bb.__offset(payloadTableOffset, 6);
-      const offset = offsetFieldOffset ? Number(bb.readUint64(payloadTableOffset + offsetFieldOffset)) : 0;
+      const offset = offsetFieldOffset
+        ? Number(bb.readUint64(payloadTableOffset + offsetFieldOffset))
+        : 0;
       const lengthFieldOffset = bb.__offset(payloadTableOffset, 8);
-      const length = lengthFieldOffset ? Number(bb.readUint64(payloadTableOffset + lengthFieldOffset)) : 0;
+      const length = lengthFieldOffset
+        ? Number(bb.readUint64(payloadTableOffset + lengthFieldOffset))
+        : 0;
 
       return { type: "native", id, offset, length };
     }
@@ -157,29 +187,48 @@ export function decodeManifest(data: Uint8Array): Manifest {
 
   // Read manifest ID
   const idFieldOffset = bb.__offset(tableOffset, MANIFEST_ID_OFFSET);
-  const id = idFieldOffset ? readObjectId12(bb, tableOffset + idFieldOffset) : "";
+  const id = idFieldOffset
+    ? readObjectId12(bb, tableOffset + idFieldOffset)
+    : "";
 
   // Read arrays (vector of ArrayManifest)
   const chunks = new Map<string, Map<string, ChunkPayload>>();
   const arraysLen = readVectorLength(bb, tableOffset, MANIFEST_ARRAYS_OFFSET);
 
   for (let i = 0; i < arraysLen; i++) {
-    const elemOffset = getVectorElement(bb, tableOffset, MANIFEST_ARRAYS_OFFSET, i);
+    const elemOffset = getVectorElement(
+      bb,
+      tableOffset,
+      MANIFEST_ARRAYS_OFFSET,
+      i,
+    );
     const arrayTableOffset = bb.__indirect(elemOffset);
 
     // Read node ID (ObjectId8)
-    const nodeIdFieldOffset = bb.__offset(arrayTableOffset, ARRAY_MANIFEST_NODE_ID_OFFSET);
+    const nodeIdFieldOffset = bb.__offset(
+      arrayTableOffset,
+      ARRAY_MANIFEST_NODE_ID_OFFSET,
+    );
     const nodeId = nodeIdFieldOffset
       ? readObjectId8(bb, arrayTableOffset + nodeIdFieldOffset)
       : new Uint8Array(8);
     const nodeIdHex = Buffer.from(nodeId).toString("hex");
 
     // Read chunks (vector of indexed ChunkRef)
-    const chunksLen = readVectorLength(bb, arrayTableOffset, ARRAY_MANIFEST_CHUNKS_OFFSET);
+    const chunksLen = readVectorLength(
+      bb,
+      arrayTableOffset,
+      ARRAY_MANIFEST_CHUNKS_OFFSET,
+    );
     const chunkMap = new Map<string, ChunkPayload>();
 
     for (let j = 0; j < chunksLen; j++) {
-      const chunkElemOffset = getVectorElement(bb, arrayTableOffset, ARRAY_MANIFEST_CHUNKS_OFFSET, j);
+      const chunkElemOffset = getVectorElement(
+        bb,
+        arrayTableOffset,
+        ARRAY_MANIFEST_CHUNKS_OFFSET,
+        j,
+      );
       const chunkTableOffset = bb.__indirect(chunkElemOffset);
 
       // IndexedChunkRef has: coords (vector of u32), chunk_ref
@@ -244,7 +293,7 @@ export function nodeIdToHex(nodeId: Uint8Array): string {
 export function findChunk(
   manifest: Manifest,
   nodeId: Uint8Array,
-  chunkCoords: number[]
+  chunkCoords: number[],
 ): ChunkPayload | undefined {
   const nodeIdHex = nodeIdToHex(nodeId);
   const nodeChunks = manifest.chunks.get(nodeIdHex);
@@ -259,7 +308,7 @@ export function findChunk(
  */
 export function isChunkInExtent(
   chunkCoords: number[],
-  extents: Array<[number, number]>
+  extents: Array<[number, number]>,
 ): boolean {
   if (chunkCoords.length !== extents.length) return false;
 

@@ -23,7 +23,7 @@ describe("Ref parsing", () => {
 
     it("should reject extra properties", () => {
       expect(() =>
-        parseRefJson('{"snapshot":"1CECHNKREP0F1RSTCMT0","extra":"value"}')
+        parseRefJson('{"snapshot":"1CECHNKREP0F1RSTCMT0","extra":"value"}'),
       ).toThrow();
     });
 
@@ -36,7 +36,7 @@ describe("Ref parsing", () => {
     it("should construct correct path", () => {
       expect(getBranchRefPath("main")).toBe("refs/branch.main/ref.json");
       expect(getBranchRefPath("feature-x")).toBe(
-        "refs/branch.feature-x/ref.json"
+        "refs/branch.feature-x/ref.json",
       );
     });
   });

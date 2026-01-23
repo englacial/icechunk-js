@@ -30,7 +30,10 @@ export interface NativeChunkRef {
   length: number;
 }
 
-export type ChunkPayload = InlineChunkPayload | VirtualChunkRef | NativeChunkRef;
+export type ChunkPayload =
+  | InlineChunkPayload
+  | VirtualChunkRef
+  | NativeChunkRef;
 
 /** Manifest reference with extent boundaries */
 export interface ManifestRef {
@@ -92,7 +95,11 @@ export interface Manifest {
 }
 
 /** Icechunk file types */
-export type IcechunkFileType = "snapshot" | "manifest" | "transactionLog" | "attributeFile";
+export type IcechunkFileType =
+  | "snapshot"
+  | "manifest"
+  | "transactionLog"
+  | "attributeFile";
 
 /** Compression methods */
 export type CompressionMethod = "uncompressed" | "zstd";

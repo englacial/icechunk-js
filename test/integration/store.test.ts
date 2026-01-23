@@ -59,7 +59,10 @@ describe("IcechunkStore Integration", () => {
     const meta = JSON.parse(text);
 
     expect(meta.zarr_format).toBe(3);
-    console.log(`Metadata for ${firstModel}/${firstExperiment}:`, meta.node_type);
+    console.log(
+      `Metadata for ${firstModel}/${firstExperiment}:`,
+      meta.node_type,
+    );
   });
 
   it("should resolve subpaths correctly", async () => {

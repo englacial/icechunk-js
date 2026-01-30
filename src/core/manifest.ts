@@ -166,7 +166,12 @@ function parseChunkRef(
   if (location) {
     return {
       coords,
-      payload: { type: "virtual", location, offset: chunkOffset, length: chunkLength },
+      payload: {
+        type: "virtual",
+        location,
+        offset: chunkOffset,
+        length: chunkLength,
+      },
     };
   }
 
@@ -201,11 +206,7 @@ export function decodeManifest(data: Uint8Array): Manifest {
 
   // Read arrays (vector of ArrayManifest)
   const chunks = new Map<string, Map<string, ChunkPayload>>();
-  const arraysLen = readVectorLength(
-    bb,
-    tableOffset,
-    MANIFEST_ARRAYS_OFFSET,
-  );
+  const arraysLen = readVectorLength(bb, tableOffset, MANIFEST_ARRAYS_OFFSET);
 
   for (let i = 0; i < arraysLen; i++) {
     const elemOffset = getVectorElement(

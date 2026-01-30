@@ -341,9 +341,21 @@ export class IcechunkStore implements AsyncReadable {
   }
 
   /**
-   * List child paths under a given path.
+   * Get the node type at a given path.
+   * Returns "array", "group", or undefined if the path doesn't exist.
    */
-  listChildren(path: string): string[] {
+  getNodeType(path: string): "array" | "group" | undefined {
+    if (!this.snapshot) return undefined;
+    const node = findNode(this.snapshot, path);
+    if (!node) return undefined;
+    return node.nodeData.type;
+  }
+
+  /**
+   * List child paths under a given path.
+   * Optionally filter by node type.
+   */
+  listChildren(path: string, filterType?: "array" | "group"): string[] {
     if (!this.snapshot) return [];
 
     const normalizedPath = path.replace(/^\/|\/$/g, "");
@@ -355,7 +367,16 @@ export class IcechunkStore implements AsyncReadable {
         const rest = node.path.slice(prefix.length);
         const nextPart = rest.split("/")[0];
         if (nextPart) {
-          children.add(nextPart);
+          if (filterType) {
+            // Only include if the direct child node matches the filter type
+            const childPath = prefix + nextPart;
+            const childNode = findNode(this.snapshot!, childPath);
+            if (childNode && childNode.nodeData.type === filterType) {
+              children.add(nextPart);
+            }
+          } else {
+            children.add(nextPart);
+          }
         }
       }
     }

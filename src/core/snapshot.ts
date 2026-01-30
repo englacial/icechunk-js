@@ -506,6 +506,6 @@ export function encodeZarrJson(node: NodeSnapshot): string {
     fill_value: zarrMetadata.fillValue,
     codecs: zarrMetadata.codecs,
     dimension_names: zarrMetadata.dimensionNames,
-    attributes: {},
+    attributes: node.userAttributes || {},
   });
 }

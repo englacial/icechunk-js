@@ -1,6 +1,9 @@
 {
-  "name": "icechunk-js",
+  "name": "@englacial/icechunk-js",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "TypeScript read-only client for Icechunk stores, compatible with zarrita.js",
   "type": "module",
   "main": "./dist/index.cjs",
